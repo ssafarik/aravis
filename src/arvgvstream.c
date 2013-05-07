@@ -294,8 +294,8 @@ _find_frame_data (ArvGvStreamThreadData *thread_data,
 	ArvGvStreamFrameData *frame = NULL;
 	ArvBuffer *buffer;
 	GSList *iter;
-	guint n_packets = 0;
 	gint16 frame_id_inc;
+	guint n_packets_data = 0;
 
 	for (iter = thread_data->frames; iter != NULL; iter = iter->next) {
 		frame = iter->data;
@@ -329,13 +329,14 @@ _find_frame_data (ArvGvStreamThreadData *thread_data,
 	frame->buffer = buffer;
 	_update_socket (thread_data, frame->buffer);
 	frame->buffer->status = ARV_BUFFER_STATUS_FILLING;
-	n_packets = (frame->buffer->size + thread_data->data_size - 1) / thread_data->data_size + 2;
+	n_packets_data = frame->buffer->size / thread_data->data_size; // Rounded down.
+	n_packets_data += (frame->buffer->size % thread_data->data_size) ? 1 : 0; // Add one for the partial packet.
+	frame->n_packets = 1 + n_packets_data + 1; // leader + data + trailer packets.
 
 	frame->first_packet_time_us = time_us;
 	frame->last_packet_time_us = time_us;
 
-	frame->packet_data = g_new0 (ArvGvStreamPacketData, n_packets);
-	frame->n_packets = n_packets;
+	frame->packet_data = g_new0 (ArvGvStreamPacketData, frame->n_packets);
 
 	if (thread_data->callback != NULL &&
 	    frame->buffer != NULL)
